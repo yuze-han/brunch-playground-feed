@@ -30,6 +30,9 @@ def validate_detail(detail: dict[str, Any], expected_slug: str) -> None:
     for field in ("id", "title", "description", "date", "originalUrl"):
         require(bool(detail.get(field)), f"{prefix}: missing {field}")
     require(is_https_url(detail["originalUrl"]), f"{prefix}: originalUrl must use HTTPS")
+    require(detail.get("source", {}).get("provider") == "brunch", f"{prefix}: invalid source provider")
+    require(isinstance(detail.get("source", {}).get("fingerprint"), str), f"{prefix}: missing fingerprint")
+    require(isinstance(detail.get("source", {}).get("extractionVersion"), int), f"{prefix}: missing extractionVersion")
     if detail.get("thumbnail"):
         require(is_https_url(detail["thumbnail"]), f"{prefix}: thumbnail must use HTTPS")
 

@@ -23,7 +23,7 @@ def article_html(title, url, keyword="UX"):
         "description": f"{title} 설명", "articleBody": f"{title} 본문", "keywords": keyword,
         "url": url, "image": ["https://example.com/thumbnail.jpg"],
     }, ensure_ascii=False)
-    return f'<script type="application/ld+json">{structured}</script><p class="wrap_item item_type_text">{title} 본문</p>'
+    return f'<script type="application/ld+json">{structured}</script><div class="wrap_body"><p class="wrap_item item_type_text">{title} 본문</p></div>'
 
 
 class FutureSyncTests(unittest.TestCase):
@@ -54,7 +54,7 @@ class FutureSyncTests(unittest.TestCase):
             "content": "기존 본문", "contentFormat": "text",
             "contentBlocks": [{"type": "text", "style": "paragraph", "text": "기존 본문"}],
             "images": [], "originalUrl": url, "slug": item.slug,
-            "source": {"provider": "brunch", "guid": guid, "fingerprint": item.fingerprint},
+            "source": {"provider": "brunch", "guid": guid, "fingerprint": item.fingerprint, "extractionVersion": sync_module.EXTRACTION_VERSION},
         }
         (self.article_dir / f"{item.slug}.json").write_text(json.dumps(detail), encoding="utf-8")
         card_fields = ("id", "type", "title", "description", "date", "thumbnail", "tags", "originalUrl", "slug", "source")

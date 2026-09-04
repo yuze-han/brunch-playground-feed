@@ -24,6 +24,7 @@ DATA_DIR = ROOT / "data"
 ARTICLE_DIR = DATA_DIR / "articles"
 RSS_URL = "https://brunch.co.kr/rss/@@8FXu"
 USER_AGENT = "yuzehan-playground-feed/1.0 (+https://yuzehan.com)"
+EXTRACTION_VERSION = 1
 
 
 @dataclass(frozen=True)
@@ -163,12 +164,19 @@ class BrunchBodyParser(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.blocks: list[dict[str, Any]] = []
         self._depth = 0
+        self._body_depth = 0
         self._tag = ""
         self._text: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         values = dict(attrs)
         classes = set((values.get("class") or "").split())
+        if not self._body_depth:
+            if "wrap_body" in classes:
+                self._body_depth = 1
+            return
+        if tag not in self.VOID_TAGS:
+            self._body_depth += 1
         if self._depth:
             if tag == "br" and self._tag != "div":
                 self._text.append("\n")
@@ -195,22 +203,22 @@ class BrunchBodyParser(HTMLParser):
             self._text.append(data)
 
     def handle_endtag(self, tag: str) -> None:
-        if not self._depth:
-            return
-        self._depth -= 1
         if self._depth:
-            return
-        if self._tag != "div":
-            text = re.sub(r"[ \t\r\f\v]+", " ", "".join(self._text))
-            text = re.sub(r" *\n *", "\n", text).strip()
-            if text:
-                self.blocks.append({
-                    "type": "text",
-                    "style": self.TEXT_STYLES.get(self._tag, "paragraph"),
-                    "text": text,
-                })
-        self._tag = ""
-        self._text = []
+            self._depth -= 1
+            if not self._depth:
+                if self._tag != "div":
+                    text = re.sub(r"[ \t\r\f\v]+", " ", "".join(self._text))
+                    text = re.sub(r" *\n *", "\n", text).strip()
+                    if text:
+                        self.blocks.append({
+                            "type": "text",
+                            "style": self.TEXT_STYLES.get(self._tag, "paragraph"),
+                            "text": text,
+                        })
+                self._tag = ""
+                self._text = []
+        if self._body_depth:
+            self._body_depth -= 1
 
     def _append_images(self, raw: str | None) -> None:
         if not raw:
@@ -276,7 +284,11 @@ def sync() -> int:
         needs_upgrade = False
         if detail_path.exists():
             saved_detail = json.loads(detail_path.read_text(encoding="utf-8"))
-            needs_upgrade = "contentBlocks" not in saved_detail or "tags" not in saved_detail
+            needs_upgrade = (
+                "contentBlocks" not in saved_detail
+                or "tags" not in saved_detail
+                or saved_detail.get("source", {}).get("extractionVersion") != EXTRACTION_VERSION
+            )
 
         if changed or not detail_path.exists() or needs_upgrade:
             any_article_changed = True
@@ -304,6 +316,7 @@ def sync() -> int:
                     "provider": "brunch",
                     "guid": item.guid,
                     "fingerprint": item.fingerprint,
+                    "extractionVersion": EXTRACTION_VERSION,
                     "dateModified": article.get("dateModified"),
                 },
             }

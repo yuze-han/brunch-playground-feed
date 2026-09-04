@@ -19,6 +19,7 @@ class ValidateDataTests(unittest.TestCase):
                 "id": "1", "type": "article", "title": "Title", "description": "Description",
                 "date": "2026-01-01T00:00:00Z", "thumbnail": None, "tags": [],
                 "originalUrl": "https://example.com/article", "slug": "article-1",
+                "source": {"provider": "brunch", "fingerprint": "test", "extractionVersion": 1},
                 "contentBlocks": [{"type": "image", "url": "http://example.com/image.jpg"}],
             }
             (article_dir / "article-1.json").write_text(json.dumps(detail), encoding="utf-8")

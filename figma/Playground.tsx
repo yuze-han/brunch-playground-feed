@@ -40,6 +40,25 @@ type Feed = {
   items: ArticleCard[]
 }
 
+async function fetchJson<T>(url: string, attempts = 2): Promise<T> {
+  let lastError: unknown
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), 12000)
+    try {
+      const response = await fetch(url, { cache: "no-store", signal: controller.signal })
+      if (!response.ok) throw new Error(`Request failed: ${response.status}`)
+      return await response.json() as T
+    } catch (error) {
+      lastError = error
+      if (attempt + 1 < attempts) await new Promise((resolve) => window.setTimeout(resolve, 400))
+    } finally {
+      window.clearTimeout(timeout)
+    }
+  }
+  throw lastError
+}
+
 function dateLabel(value: string) {
   const parts = new Intl.DateTimeFormat("en", {
     year: "numeric",
@@ -67,12 +86,8 @@ export default function Playground() {
 
   useEffect(() => {
     let active = true
-    fetch(`${FEED_BASE}/index.json`)
-      .then((response) => {
-        if (!response.ok) throw new Error(`Feed request failed: ${response.status}`)
-        return response.json()
-      })
-      .then((value: Feed) => active && setFeed(value))
+    fetchJson<Feed>(`${FEED_BASE}/index.json`)
+      .then((value) => active && setFeed(value))
       .catch(() => active && setError(true))
       .finally(() => active && setLoading(false))
     return () => {
@@ -84,9 +99,7 @@ export default function Playground() {
     setLoading(true)
     setError(false)
     try {
-      const response = await fetch(`${FEED_BASE}/articles/${card.slug}.json`)
-      if (!response.ok) throw new Error(`Article request failed: ${response.status}`)
-      setSelected(await response.json())
+      setSelected(await fetchJson<ArticleDetail>(`${FEED_BASE}/articles/${card.slug}.json`))
       window.scrollTo({ top: 0, behavior: "smooth" })
     } catch {
       setError(true)

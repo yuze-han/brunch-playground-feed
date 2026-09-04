@@ -257,6 +257,7 @@
   "slug": "hyj402-4",
   "source": {
     "dateModified": "2023-12-30T02:30:10+09:00",
+    "extractionVersion": 1,
     "fingerprint": "939ff002d93e19e4afe82cd31f62786da2666b3abd06cb58cab63e84d82fb1bc",
     "guid": "https://brunch.co.kr/@@8FXu/4",
     "provider": "brunch"
