@@ -143,6 +143,16 @@ def image_records(value: Any) -> list[dict[str, Any]]:
     return result
 
 
+def keyword_list(value: Any) -> list[str]:
+    if isinstance(value, list):
+        values = value
+    elif isinstance(value, str):
+        values = re.split(r"[,|]", value)
+    else:
+        values = []
+    return [str(item).strip() for item in values if str(item).strip()]
+
+
 class BrunchBodyParser(HTMLParser):
     """Extract Brunch's rendered article items without executing page scripts."""
 
@@ -263,7 +273,8 @@ def sync() -> int:
 
         needs_upgrade = False
         if detail_path.exists():
-            needs_upgrade = "contentBlocks" not in json.loads(detail_path.read_text(encoding="utf-8"))
+            saved_detail = json.loads(detail_path.read_text(encoding="utf-8"))
+            needs_upgrade = "contentBlocks" not in saved_detail or "tags" not in saved_detail
 
         if changed or not detail_path.exists() or needs_upgrade:
             any_article_changed = True
@@ -271,6 +282,7 @@ def sync() -> int:
             article = json_ld_from_html(article_html)
             images = image_records(article.get("image"))
             content_blocks = content_blocks_from_html(article_html)
+            tags = keyword_list(article.get("keywords"))
             description = clean_preview(article.get("description") or item.description_html)
             detail = {
                 "id": item.guid,
@@ -279,6 +291,7 @@ def sync() -> int:
                 "description": description,
                 "date": item.published_at,
                 "thumbnail": images[0]["url"] if images else first_image(item.description_html),
+                "tags": tags,
                 "content": article.get("articleBody") or "",
                 "contentFormat": "text",
                 "contentBlocks": content_blocks,
@@ -297,7 +310,7 @@ def sync() -> int:
             detail = json.loads(detail_path.read_text(encoding="utf-8"))
 
         cards.append({key: detail.get(key) for key in (
-            "id", "type", "title", "description", "date", "thumbnail", "originalUrl", "slug", "source"
+            "id", "type", "title", "description", "date", "thumbnail", "tags", "originalUrl", "slug", "source"
         )})
 
     comparable_previous = existing.get("items", [])

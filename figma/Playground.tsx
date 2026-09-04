@@ -18,6 +18,7 @@ type ArticleCard = {
   description: string
   date: string
   thumbnail: string | null
+  tags?: string[]
   originalUrl: string
   slug: string
   source: Source
@@ -40,11 +41,14 @@ type Feed = {
 }
 
 function dateLabel(value: string) {
-  return new Intl.DateTimeFormat("ko-KR", {
+  const parts = new Intl.DateTimeFormat("en", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(new Date(value))
+    timeZone: "Asia/Seoul",
+  }).formatToParts(new Date(value))
+  const read = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value
+  return `${read("year")}/${read("month")}/${read("day")}`
 }
 
 function Status({ children }: { children: React.ReactNode }) {
@@ -91,70 +95,78 @@ export default function Playground() {
     }
   }
 
+  const nextArticle = selected && feed
+    ? feed.items[feed.items.findIndex((item) => item.id === selected.id) + 1]
+    : undefined
+
   if (loading && !feed) return <Status>Loading Playground…</Status>
   if (error && !feed) return <Status>콘텐츠를 불러오지 못했습니다.</Status>
 
   if (selected) {
     return (
       <article className="w-full bg-white text-black">
-        <div className="mx-auto max-w-[760px] px-4 md:px-8 py-12 md:py-24">
-          <button
-            type="button"
-            onClick={() => setSelected(null)}
-            className="mb-16 text-[13px] text-[#313131] font-['Source_Code_Pro'] bg-transparent border-0 p-0 cursor-pointer"
-          >
-            ← Playground
-          </button>
-
-          <div className="text-[12px] leading-none text-[#021f6f] font-['Source_Code_Pro'] font-medium uppercase">
-            Article
-          </div>
-          <h1 className="mt-5 text-[36px] md:text-[54px] leading-[1.14] font-['Pretendard'] font-medium tracking-[-0.025em]">
-            {selected.title}
-          </h1>
-          <time className="block mt-6 text-[12px] text-[#6a6a6a] font-['Source_Code_Pro']">
-            {dateLabel(selected.date)}
-          </time>
-
+        <div className="mx-auto w-full max-w-[1030px] px-[40px]">
           {selected.thumbnail && (
             <img
               src={selected.thumbnail}
               alt=""
-              className="block w-full mt-12 object-cover"
+              className="block h-[261px] w-full object-cover"
             />
           )}
 
-          <div className="mt-12 font-['Pretendard']">
+          <header className="flex flex-col items-start gap-[24px] pb-[60px] pt-[40px]">
+            <div className="text-[16px] font-medium leading-[1.03] tracking-[-0.045em] text-[#021f6f] underline font-['Source_Code_Pro']">
+              {selected.tags?.[0] ?? "Article"}
+            </div>
+            <h1 className="w-full text-[40px] font-light leading-[1.1] tracking-[-0.01em] font-['Pretendard']">
+              {selected.title}
+            </h1>
+            <div className="w-full pr-[32px] pb-[20px]">
+              <p className="text-[15px] leading-[1.4] text-[#575757] font-['Pretendard']">
+                {selected.description}
+              </p>
+              <time className="mt-[12px] block text-[13px] leading-[1.03] text-[#575757] font-['Source_Code_Pro']">
+                {dateLabel(selected.date)}
+              </time>
+            </div>
+          </header>
+
+          <div className="font-['Pretendard']">
             {selected.contentBlocks?.length ? selected.contentBlocks.map((block, index) => {
               if (block.type === "image") {
                 return (
-                  <figure key={`${block.url}-${index}`} className="my-12">
-                    <img src={block.url} alt={block.alt ?? ""} className="block w-full h-auto" />
+                  <figure key={`${block.url}-${index}`} className="m-0 pr-[32px] pt-[60px]">
+                    <img src={block.url} alt={block.alt ?? ""} className="block h-auto w-full object-contain" />
                     {block.caption && (
-                      <figcaption className="mt-3 text-center text-[12px] leading-[1.5] text-[#777]">
+                      <figcaption className="mt-[12px] w-full text-center text-[15px] leading-[1.4] text-[#575757]">
                         {block.caption}
                       </figcaption>
                     )}
                   </figure>
                 )
               }
-              if (block.style === "heading2") return <h2 key={index} className="mt-16 mb-5 text-[28px] leading-[1.35] font-semibold">{block.text}</h2>
-              if (block.style === "heading3") return <h3 key={index} className="mt-12 mb-4 text-[22px] leading-[1.45] font-semibold">{block.text}</h3>
-              if (block.style === "quote") return <blockquote key={index} className="my-8 border-l-2 border-[#021f6f] pl-5 text-[17px] leading-[1.9] whitespace-pre-line">{block.text}</blockquote>
-              return <p key={index} className="my-5 text-[17px] leading-[1.9] whitespace-pre-line">{block.text}</p>
+              if (block.style === "heading2") return <h2 key={index} className="w-full pt-[40px] text-[30px] font-medium leading-[1.4] tracking-[-0.02em]">{block.text}</h2>
+              if (block.style === "heading3") return <h3 key={index} className="w-full pt-[40px] text-[22px] font-medium leading-[1.4] tracking-[-0.02em]">{block.text}</h3>
+              if (block.style === "quote") return <div key={index} className="mt-[40px] border border-[rgba(0,0,0,0.1)] px-[30px] py-[40px] text-[15px] leading-[1.4] text-[#575757] whitespace-pre-line">{block.text}</div>
+              return <p key={index} className="mt-[20px] text-[15px] leading-[1.4] text-[#575757] whitespace-pre-line">{block.text}</p>
             }) : (
-              <p className="text-[17px] leading-[1.9] whitespace-pre-wrap">{selected.content}</p>
+              <p className="text-[15px] leading-[1.4] text-[#575757] whitespace-pre-wrap">{selected.content}</p>
             )}
           </div>
 
-          <a
-            href={selected.originalUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-block mt-16 text-[13px] text-[#021f6f] underline underline-offset-4 font-['Source_Code_Pro']"
-          >
-            브런치에서 원문 보기 ↗
-          </a>
+          <div className="flex items-center gap-[12px] py-[64px] font-['Source_Code_Pro'] text-[15px] leading-[1.2]">
+            <button type="button" onClick={() => setSelected(null)} className="cursor-pointer border border-black bg-white px-[8px] py-[6px]">
+              ← Playground
+            </button>
+            {nextArticle && (
+              <button type="button" onClick={() => openArticle(nextArticle)} className="cursor-pointer border border-black bg-white px-[8px] py-[6px]">
+                다음 글 보기 →
+              </button>
+            )}
+            <a href={selected.originalUrl} target="_blank" rel="noreferrer" className="border border-black px-[8px] py-[6px] text-black no-underline">
+              브런치 원문 ↗
+            </a>
+          </div>
         </div>
       </article>
     )
@@ -162,39 +174,34 @@ export default function Playground() {
 
   return (
     <section className="w-full bg-white text-black">
-      <div className="mx-auto w-full px-4 md:px-8 py-12 md:py-20">
-        <div className="flex flex-wrap gap-x-6 gap-y-3 mb-10 text-[13px] font-['Source_Code_Pro']">
-          <span className="text-black">All</span>
-          <span className="text-[#021f6f]">Article</span>
-          <span className="text-[#8a8a8a]">AI Experiment</span>
-          <span className="text-[#8a8a8a]">Graphic</span>
-          <span className="text-[#8a8a8a]">Interaction</span>
-          <span className="text-[#8a8a8a]">Side Project</span>
-        </div>
+      <div className="mx-auto w-full max-w-[1030px] px-[40px] py-[40px]">
+        <p className="pb-[20px] text-[15px] leading-[1.4] text-[#575757] font-['Pretendard']">
+          {feed?.items.length ?? 0}개의 글
+        </p>
 
-        <div className="border-t border-[#dedede]">
+        <div>
           {feed?.items.map((article) => (
             <button
               key={article.id}
               type="button"
               onClick={() => openArticle(article)}
-              className="group flex w-full min-h-[252px] items-stretch justify-between gap-10 text-left bg-transparent border-0 border-b border-solid border-[#dedede] px-0 py-8 cursor-pointer"
+              className="group flex w-full min-h-[324px] items-stretch justify-between gap-[60px] border-0 border-t-[0.75px] border-solid border-[#4f4f4f] bg-transparent px-0 py-[32px] text-left cursor-pointer"
             >
               <div className="flex min-w-0 flex-1 flex-col py-1">
-                <span className="text-[12px] leading-none text-[#021f6f] font-['Source_Code_Pro'] font-medium">
-                  Article
+                <span className="text-[16px] font-medium leading-[1.03] tracking-[-0.045em] text-[#021f6f] underline font-['Source_Code_Pro']">
+                  {article.tags?.[0] ?? "Article"}
                 </span>
-                <h2 className="mt-3 text-[22px] leading-[1.25] font-['Pretendard'] font-medium tracking-[-0.015em]">
+                <h2 className="mt-[16px] text-[30px] font-medium leading-[1.4] tracking-[-0.02em] font-['Pretendard']">
                   {article.title}
                 </h2>
-                <p className="mt-3 text-[14px] leading-[1.65] text-[#6a6a6a] font-['Pretendard'] line-clamp-3">
+                <p className="mt-[16px] text-[15px] leading-[1.4] text-[#575757] font-['Pretendard'] line-clamp-3">
                   {article.description}
                 </p>
-                <time className="mt-auto pt-8 text-[12px] leading-none text-[#6a6a6a] font-['Source_Code_Pro']">
+                <time className="mt-auto pt-[20px] text-[16px] leading-[1.03] tracking-[-0.045em] text-[#575757] font-['Source_Code_Pro']">
                   {dateLabel(article.date)}
                 </time>
               </div>
-              <div className="w-[30%] min-w-[220px] max-w-[320px] overflow-hidden bg-[#f3f3f3]">
+              <div className="size-[260px] shrink-0 overflow-hidden bg-[#f3f3f3]">
                 {article.thumbnail && (
                   <img
                     src={article.thumbnail}

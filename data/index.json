@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-04T17:43:13.275109Z",
+  "generatedAt": "2026-09-04T17:52:01.941719Z",
   "items": [
     {
       "date": "2023-12-21T17:03:44Z",
@@ -13,6 +13,11 @@
         "guid": "https://brunch.co.kr/@@8FXu/4",
         "provider": "brunch"
       },
+      "tags": [
+        "UX디자인",
+        "데이터",
+        "방법론"
+      ],
       "thumbnail": "https://t1.daumcdn.net/brunch/service/user/8FXu/image/vqgMy5M64BaZXGWYpm7-SSEupVY.png",
       "title": "새로운 서비스를 위한 문제를 찾는 방법(2)",
       "type": "article"
@@ -29,6 +34,11 @@
         "guid": "https://brunch.co.kr/@@8FXu/3",
         "provider": "brunch"
       },
+      "tags": [
+        "사용자경험",
+        "UX디자인",
+        "리서치"
+      ],
       "thumbnail": "https://t1.daumcdn.net/brunch/service/user/8FXu/image/1mrOofr9ak22_CZwR9kfzYSCjI0.png",
       "title": "새로운 서비스를 위한 문제를 찾는 방법(1)",
       "type": "article"

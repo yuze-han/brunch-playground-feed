@@ -182,6 +182,11 @@
     "guid": "https://brunch.co.kr/@@8FXu/3",
     "provider": "brunch"
   },
+  "tags": [
+    "사용자경험",
+    "UX디자인",
+    "리서치"
+  ],
   "thumbnail": "https://t1.daumcdn.net/brunch/service/user/8FXu/image/1mrOofr9ak22_CZwR9kfzYSCjI0.png",
   "title": "새로운 서비스를 위한 문제를 찾는 방법(1)",
   "type": "article"

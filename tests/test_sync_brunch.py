@@ -1,6 +1,6 @@
 import unittest
 
-from scripts.sync_brunch import clean_preview, content_blocks_from_html, first_image, parse_rss
+from scripts.sync_brunch import clean_preview, content_blocks_from_html, first_image, keyword_list, parse_rss
 
 
 RSS = """<?xml version="1.0" encoding="UTF-8"?>
@@ -24,6 +24,7 @@ class SyncTests(unittest.TestCase):
         item = parse_rss(RSS)[0]
         self.assertEqual(clean_preview(item.description_html), "본문")
         self.assertEqual(first_image(item.description_html), "https://example.com/a.png")
+        self.assertEqual(keyword_list("UX디자인, 데이터,방법론"), ["UX디자인", "데이터", "방법론"])
 
     def test_preserves_article_block_order(self):
         source = """
