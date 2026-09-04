@@ -264,9 +264,11 @@ def sync() -> int:
         raise ValueError("RSS returned no articles; keeping the existing feed")
     previous = {item["source"]["guid"]: item for item in existing.get("items", [])}
     cards: list[dict[str, Any]] = []
+    seen_guids: set[str] = set()
     any_article_changed = False
 
     for item in items:
+        seen_guids.add(item.guid)
         old = previous.get(item.guid)
         detail_path = ARTICLE_DIR / f"{item.slug}.json"
         changed = old is None or old.get("source", {}).get("fingerprint") != item.fingerprint
@@ -312,6 +314,13 @@ def sync() -> int:
         cards.append({key: detail.get(key) for key in (
             "id", "type", "title", "description", "date", "thumbnail", "tags", "originalUrl", "slug", "source"
         )})
+
+    # RSS feeds may expose only a recent window. Keep previously collected articles
+    # after the current RSS items so the Playground archive does not shrink over time.
+    cards.extend(
+        card for card in existing.get("items", [])
+        if card.get("source", {}).get("guid") not in seen_guids
+    )
 
     comparable_previous = existing.get("items", [])
     index_changed = cards != comparable_previous
