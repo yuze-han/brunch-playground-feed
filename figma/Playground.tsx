@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react"
 
-const FEED_BASE =
-  "https://raw.githubusercontent.com/yuze-han/brunch-playground-feed/main/data"
+const FEED_BASE = typeof window !== "undefined" && window.location.hostname === "127.0.0.1"
+  ? "/data"
+  : "https://raw.githubusercontent.com/yuze-han/brunch-playground-feed/main/data"
 
 type Source = {
   provider: "brunch"
@@ -25,6 +26,10 @@ type ArticleCard = {
 type ArticleDetail = ArticleCard & {
   content: string
   contentFormat: "text"
+  contentBlocks?: Array<
+    | { type: "text"; style: "paragraph" | "heading2" | "heading3" | "quote"; text: string }
+    | { type: "image"; url: string; width?: number; height?: number; alt?: string; caption?: string }
+  >
   images: Array<{ url: string; width?: number; height?: number; alt?: string }>
 }
 
@@ -119,18 +124,28 @@ export default function Playground() {
             />
           )}
 
-          <div className="mt-12 text-[17px] md:text-[19px] leading-[1.9] font-['Pretendard'] whitespace-pre-wrap">
-            {selected.content}
+          <div className="mt-12 font-['Pretendard']">
+            {selected.contentBlocks?.length ? selected.contentBlocks.map((block, index) => {
+              if (block.type === "image") {
+                return (
+                  <figure key={`${block.url}-${index}`} className="my-12">
+                    <img src={block.url} alt={block.alt ?? ""} className="block w-full h-auto" />
+                    {block.caption && (
+                      <figcaption className="mt-3 text-center text-[12px] leading-[1.5] text-[#777]">
+                        {block.caption}
+                      </figcaption>
+                    )}
+                  </figure>
+                )
+              }
+              if (block.style === "heading2") return <h2 key={index} className="mt-16 mb-5 text-[28px] leading-[1.35] font-semibold">{block.text}</h2>
+              if (block.style === "heading3") return <h3 key={index} className="mt-12 mb-4 text-[22px] leading-[1.45] font-semibold">{block.text}</h3>
+              if (block.style === "quote") return <blockquote key={index} className="my-8 border-l-2 border-[#021f6f] pl-5 text-[17px] leading-[1.9] whitespace-pre-line">{block.text}</blockquote>
+              return <p key={index} className="my-5 text-[17px] leading-[1.9] whitespace-pre-line">{block.text}</p>
+            }) : (
+              <p className="text-[17px] leading-[1.9] whitespace-pre-wrap">{selected.content}</p>
+            )}
           </div>
-
-          {selected.images.slice(1).map((image) => (
-            <img
-              key={image.url}
-              src={image.url}
-              alt={image.alt ?? ""}
-              className="block w-full h-auto mt-10"
-            />
-          ))}
 
           <a
             href={selected.originalUrl}
@@ -157,15 +172,29 @@ export default function Playground() {
           <span className="text-[#8a8a8a]">Side Project</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-14">
+        <div className="border-t border-[#dedede]">
           {feed?.items.map((article) => (
             <button
               key={article.id}
               type="button"
               onClick={() => openArticle(article)}
-              className="group block w-full text-left bg-transparent border-0 p-0 cursor-pointer"
+              className="group flex w-full min-h-[252px] items-stretch justify-between gap-10 text-left bg-transparent border-0 border-b border-solid border-[#dedede] px-0 py-8 cursor-pointer"
             >
-              <div className="aspect-[16/10] overflow-hidden bg-[#f3f3f3]">
+              <div className="flex min-w-0 flex-1 flex-col py-1">
+                <span className="text-[12px] leading-none text-[#021f6f] font-['Source_Code_Pro'] font-medium">
+                  Article
+                </span>
+                <h2 className="mt-3 text-[22px] leading-[1.25] font-['Pretendard'] font-medium tracking-[-0.015em]">
+                  {article.title}
+                </h2>
+                <p className="mt-3 text-[14px] leading-[1.65] text-[#6a6a6a] font-['Pretendard'] line-clamp-3">
+                  {article.description}
+                </p>
+                <time className="mt-auto pt-8 text-[12px] leading-none text-[#6a6a6a] font-['Source_Code_Pro']">
+                  {dateLabel(article.date)}
+                </time>
+              </div>
+              <div className="w-[30%] min-w-[220px] max-w-[320px] overflow-hidden bg-[#f3f3f3]">
                 {article.thumbnail && (
                   <img
                     src={article.thumbnail}
@@ -174,22 +203,6 @@ export default function Playground() {
                   />
                 )}
               </div>
-              <div className="pt-4">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-[12px] leading-none text-[#021f6f] font-['Source_Code_Pro'] font-medium">
-                    Article
-                  </span>
-                  <time className="text-[12px] leading-none text-[#6a6a6a] font-['Source_Code_Pro']">
-                    {dateLabel(article.date)}
-                  </time>
-                </div>
-                <h2 className="mt-3 text-[22px] leading-[1.25] font-['Pretendard'] font-medium tracking-[-0.015em]">
-                  {article.title}
-                </h2>
-                <p className="mt-3 text-[14px] leading-[1.65] text-[#6a6a6a] font-['Pretendard'] line-clamp-3">
-                  {article.description}
-                </p>
-              </div>
             </button>
           ))}
         </div>
@@ -197,4 +210,3 @@ export default function Playground() {
     </section>
   )
 }
-

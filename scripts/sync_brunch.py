@@ -13,7 +13,9 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
+from html.parser import HTMLParser
 from pathlib import Path
+from time import sleep
 from typing import Any
 
 
@@ -45,13 +47,22 @@ class FeedItem:
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
-def fetch_text(url: str) -> str:
-    request = urllib.request.Request(
-        url,
-        headers={"User-Agent": USER_AGENT, "Accept": "text/html,application/rss+xml"},
-    )
-    with urllib.request.urlopen(request, timeout=30) as response:
-        return response.read().decode("utf-8")
+def fetch_text(url: str, attempts: int = 3) -> str:
+    last_error: Exception | None = None
+    for attempt in range(attempts):
+        try:
+            request = urllib.request.Request(
+                url,
+                headers={"User-Agent": USER_AGENT, "Accept": "text/html,application/rss+xml"},
+            )
+            with urllib.request.urlopen(request, timeout=30) as response:
+                return response.read().decode("utf-8")
+        except Exception as error:
+            last_error = error
+            if attempt + 1 < attempts:
+                sleep(2**attempt)
+    assert last_error is not None
+    raise last_error
 
 
 def iso_date(value: str) -> str:
@@ -132,6 +143,95 @@ def image_records(value: Any) -> list[dict[str, Any]]:
     return result
 
 
+class BrunchBodyParser(HTMLParser):
+    """Extract Brunch's rendered article items without executing page scripts."""
+
+    TEXT_STYLES = {"h2": "heading2", "h3": "heading3", "blockquote": "quote"}
+    VOID_TAGS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.blocks: list[dict[str, Any]] = []
+        self._depth = 0
+        self._tag = ""
+        self._text: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        values = dict(attrs)
+        classes = set((values.get("class") or "").split())
+        if self._depth:
+            if tag == "br" and self._tag != "div":
+                self._text.append("\n")
+            if tag not in self.VOID_TAGS:
+                self._depth += 1
+            return
+        if "wrap_item" not in classes:
+            return
+        if "item_type_text" in classes:
+            self._depth = 1
+            self._tag = tag
+            self._text = []
+        elif "item_type_img" in classes:
+            self._append_images(values.get("data-app"))
+            self._depth = 1
+            self._tag = "div"
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if self._depth and tag == "br" and self._tag != "div":
+            self._text.append("\n")
+
+    def handle_data(self, data: str) -> None:
+        if self._depth and self._tag != "div":
+            self._text.append(data)
+
+    def handle_endtag(self, tag: str) -> None:
+        if not self._depth:
+            return
+        self._depth -= 1
+        if self._depth:
+            return
+        if self._tag != "div":
+            text = re.sub(r"[ \t\r\f\v]+", " ", "".join(self._text))
+            text = re.sub(r" *\n *", "\n", text).strip()
+            if text:
+                self.blocks.append({
+                    "type": "text",
+                    "style": self.TEXT_STYLES.get(self._tag, "paragraph"),
+                    "text": text,
+                })
+        self._tag = ""
+        self._text = []
+
+    def _append_images(self, raw: str | None) -> None:
+        if not raw:
+            return
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            return
+        caption = clean_preview(str(data.get("caption") or ""), limit=500)
+        for image in data.get("images") or []:
+            if not isinstance(image, dict) or not image.get("url"):
+                continue
+            block: dict[str, Any] = {"type": "image", "url": normalize_url(image["url"])}
+            for field in ("width", "height"):
+                if image.get(field):
+                    try:
+                        block[field] = int(image[field])
+                    except (TypeError, ValueError):
+                        pass
+            if caption:
+                block["caption"] = caption
+                block["alt"] = caption
+            self.blocks.append(block)
+
+
+def content_blocks_from_html(source: str) -> list[dict[str, Any]]:
+    parser = BrunchBodyParser()
+    parser.feed(source)
+    return parser.blocks
+
+
 def load_existing_index() -> dict[str, Any]:
     path = DATA_DIR / "index.json"
     if not path.exists():
@@ -150,6 +250,8 @@ def write_json(path: Path, value: Any) -> None:
 def sync() -> int:
     items = parse_rss(fetch_text(RSS_URL))
     existing = load_existing_index()
+    if not items and existing.get("items"):
+        raise ValueError("RSS returned no articles; keeping the existing feed")
     previous = {item["source"]["guid"]: item for item in existing.get("items", [])}
     cards: list[dict[str, Any]] = []
     any_article_changed = False
@@ -159,10 +261,16 @@ def sync() -> int:
         detail_path = ARTICLE_DIR / f"{item.slug}.json"
         changed = old is None or old.get("source", {}).get("fingerprint") != item.fingerprint
 
-        if changed or not detail_path.exists():
+        needs_upgrade = False
+        if detail_path.exists():
+            needs_upgrade = "contentBlocks" not in json.loads(detail_path.read_text(encoding="utf-8"))
+
+        if changed or not detail_path.exists() or needs_upgrade:
             any_article_changed = True
-            article = json_ld_from_html(fetch_text(item.original_url))
+            article_html = fetch_text(item.original_url)
+            article = json_ld_from_html(article_html)
             images = image_records(article.get("image"))
+            content_blocks = content_blocks_from_html(article_html)
             description = clean_preview(article.get("description") or item.description_html)
             detail = {
                 "id": item.guid,
@@ -173,6 +281,7 @@ def sync() -> int:
                 "thumbnail": images[0]["url"] if images else first_image(item.description_html),
                 "content": article.get("articleBody") or "",
                 "contentFormat": "text",
+                "contentBlocks": content_blocks,
                 "images": images,
                 "originalUrl": normalize_url(article.get("url")) or item.original_url,
                 "slug": item.slug,

@@ -5,16 +5,20 @@
 ## 생성되는 파일
 
 - `data/index.json`: 카드 목록
-- `data/articles/<slug>.json`: 개별 글 상세 데이터
+- `data/articles/<slug>.json`: 개별 글 상세 데이터. 문단, 소제목, 인용문, 이미지 순서를 `contentBlocks`에 보존합니다.
 
 ## 로컬 실행
 
 ```bash
 python3 scripts/sync_brunch.py
 python3 -m unittest discover -s tests
+npm install
+npm run dev
 ```
 
-GitHub Actions가 매일 한 번 실행되며, 새 글이나 변경된 글이 있을 때만 JSON을 갱신합니다.
+GitHub Actions가 매일 03:17(KST)에 실행되며, 새 글이나 변경된 글이 있을 때만 JSON을 갱신합니다. 네트워크 요청은 최대 세 번 재시도하고, RSS가 일시적으로 빈 응답을 반환하면 기존 목록을 유지한 채 실패 처리합니다.
+
+로컬 미리보기는 데스크톱 동작과 상세 본문 순서를 검수하기 위한 용도입니다. 현재 반응형 조정은 의도적으로 포함하지 않았습니다.
 
 ## Figma Sites 연결
 
