@@ -33,6 +33,8 @@ jobs:
           npm run build
       - name: Sync public feed
         run: python scripts/sync_brunch.py
+      - name: Validate generated data
+        run: python scripts/validate_data.py
       - name: Commit changed data
         run: |
           if git diff --quiet -- data; then
