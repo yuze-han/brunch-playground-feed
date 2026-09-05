@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react"
 
+// Figma Sites Code Layer
+// Paste this entire file into the code editor. No API key or environment variable is required.
+// Desktop layout only; tablet and mobile breakpoints will be added after desktop validation.
 const FEED_BASE = typeof window !== "undefined" && window.location.hostname === "127.0.0.1"
   ? "/data"
   : "https://raw.githubusercontent.com/yuze-han/brunch-playground-feed/main/data"
