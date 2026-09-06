@@ -120,7 +120,7 @@ export default function Playground() {
 
   if (selected) {
     return (
-      <article className="w-full bg-white text-black">
+      <article className="h-fit w-full overflow-visible bg-white text-black">
         <div className="mx-auto w-full max-w-[1030px] px-[40px]">
           {selected.thumbnail && (
             <img
@@ -138,9 +138,6 @@ export default function Playground() {
               {selected.title}
             </h1>
             <div className="w-full pr-[32px] pb-[20px]">
-              <p className="text-[15px] leading-[1.4] text-[#575757] font-['Pretendard']">
-                {selected.description}
-              </p>
               <time className="mt-[12px] block text-[13px] leading-[1.03] text-[#575757] font-['Source_Code_Pro']">
                 {dateLabel(selected.date)}
               </time>
@@ -189,7 +186,7 @@ export default function Playground() {
   }
 
   return (
-    <section className="w-full bg-white text-black">
+    <section className="h-fit w-full overflow-visible bg-white text-black">
       <div className="mx-auto w-full max-w-[1030px] px-[40px] py-[40px]">
         <p className="pb-[20px] text-[15px] leading-[1.4] text-[#575757] font-['Pretendard']">
           {feed?.items.length ?? 0}개의 글
